@@ -1,4 +1,4 @@
-# CrittografiaIA - Censura, memoria e riunione
+﻿# Shadow Text
 
 Sistema locale per censurare file messi in `Censura`, salvare i dati originali
 in `Dati`, e ripristinare i file quando il censurato viene spostato in
@@ -16,7 +16,7 @@ Usa:
 Dalla cartella principale del progetto:
 
 ```powershell
-cd C:\Users\Gab\Desktop\ProgettiPersonali\BackEnd\CrittografiaIA
+cd ShadowText
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
@@ -33,7 +33,7 @@ C:\Users\Gab\.opf\privacy_filter
 Comando consigliato per uso normale:
 
 ```powershell
-python -m censura_privacy watch --fast-pdf
+python -m shadow_text watch --fast-pdf
 ```
 
 Questo usa OPF su `.txt` e `.md`, ma sui PDF usa regex + memoria. E il miglior
@@ -45,50 +45,54 @@ file. Se CUDA non e disponibile o OPF non riesce a usarla, torna su CPU.
 Tutti i modi di avvio:
 
 ```powershell
-python -m censura_privacy watch
+python -m shadow_text watch
 ```
 
 Modalita completa. Usa OPF su tutti i file supportati. E la piu precisa. Prova
 CUDA/GPU; se non riesce torna su CPU.
 
 ```powershell
-python -m censura_privacy watch --fast-pdf
+python -m shadow_text watch --fast-pdf
 ```
 
 Modalita consigliata. PDF veloci con regex + memoria; txt/md con OPF. I txt/md
 provano CUDA/GPU. I PDF in questa modalita non usano OPF, quindi non usano GPU.
 
 ```powershell
-python -m censura_privacy watch --regex-only
+python -m shadow_text watch --regex-only
 ```
 
 Modalita veloce senza OPF. Usa solo regex + memoria per tutti i file.
 
 ```powershell
-python -m censura_privacy watch --gpu-over-mb 5
+python -m shadow_text watch --gpu-over-mb 5
 ```
 
 Limita l'uso automatico della GPU ai file sopra 5 MB:
 
 ```powershell
-python -m censura_privacy watch --gpu-over-mb 0
+python -m shadow_text watch --gpu-over-mb 0
 ```
 
 Disattiva la soglia automatica e usa il device normale.
 
 ```powershell
-python -m censura_privacy watch --fast-pdf --gpu-over-mb 5
+python -m shadow_text watch --fast-pdf --gpu-over-mb 5
 ```
 
 PDF veloci senza OPF; txt/md sopra 5 MB provano GPU.
 
 ```powershell
-python -m censura_privacy watch --all-files
+python -m shadow_text watch --all-files
 ```
 
 Prova a leggere anche estensioni non note come testo UTF-8.
 
-Se sei per errore dentro `censura_privacy`, funziona anche:
+Il vecchio package interno `censura_privacy` resta compatibile, quindi i vecchi
+comandi continuano a funzionare. Per il rebranding usa pero i comandi
+`shadow_text`.
+
+Se sei per errore dentro `censura_privacy`, funziona ancora anche:
 
 ```powershell
 python watcher.py watch --fast-pdf
@@ -99,7 +103,7 @@ python watcher.py watch --fast-pdf
 Controllare se il Python usato dal progetto vede CUDA:
 
 ```powershell
-python -m censura_privacy doctor-cuda
+python -m shadow_text doctor-cuda
 ```
 
 Se `nvidia-smi` vede la GPU ma `doctor-cuda` mostra `torch.version.cuda = None`
@@ -111,7 +115,7 @@ Reinstalla PyTorch con CUDA dopo le dipendenze del progetto:
 ```powershell
 python -m pip install -r requirements.txt
 python -m pip install --upgrade torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-python -m censura_privacy doctor-cuda
+python -m shadow_text doctor-cuda
 ```
 
 Quando `doctor-cuda` mostra `torch.cuda.is_available(): True`, OPF puo usare la
@@ -201,13 +205,13 @@ dice di spostarlo in `Riunione`.
 Censurare un file specifico:
 
 ```powershell
-python -m censura_privacy censor --file .\Censura\nota.pdf --fast-pdf
+python -m shadow_text censor --file .\Censura\nota.pdf --fast-pdf
 ```
 
 Ripristinare un file specifico:
 
 ```powershell
-python -m censura_privacy restore --file .\Riunione\nota.censurato.pdf
+python -m shadow_text restore --file .\Riunione\nota.censurato.pdf
 ```
 
 ## Aumentare la memoria
@@ -218,36 +222,36 @@ file successivi.
 Vedere la memoria:
 
 ```powershell
-python -m censura_privacy show-memory
+python -m shadow_text show-memory
 ```
 
 Se manca una censura, aggiungi una regola:
 
 ```powershell
-python -m censura_privacy remember-redact --text "Mario Rossi" --label private_person
+python -m shadow_text remember-redact --text "Mario Rossi" --label private_person
 ```
 
 Esempi utili:
 
 ```powershell
-python -m censura_privacy remember-redact --text "IT60X0542811101000000123456" --label iban
-python -m censura_privacy remember-redact --text "mario.rossi@example.com" --label private_email
-python -m censura_privacy remember-redact --text "+39 333 1234567" --label private_phone
-python -m censura_privacy remember-redact --text "Via Roma 10, Milano" --label private_address
-python -m censura_privacy remember-redact --text "API_KEY_123456789" --label secret
+python -m shadow_text remember-redact --text "IT60X0542811101000000123456" --label iban
+python -m shadow_text remember-redact --text "mario.rossi@example.com" --label private_email
+python -m shadow_text remember-redact --text "+39 333 1234567" --label private_phone
+python -m shadow_text remember-redact --text "Via Roma 10, Milano" --label private_address
+python -m shadow_text remember-redact --text "API_KEY_123456789" --label secret
 ```
 
 Per aziende:
 
 ```powershell
-python -m censura_privacy remember-company --text "OpenAI"
-python -m censura_privacy remember-company --text "Rossi Consulting"
+python -m shadow_text remember-company --text "OpenAI"
+python -m shadow_text remember-company --text "Rossi Consulting"
 ```
 
 Se censura qualcosa che deve restare visibile:
 
 ```powershell
-python -m censura_privacy remember-keep --text "OpenAI"
+python -m shadow_text remember-keep --text "OpenAI"
 ```
 
 Le regole vengono salvate in:
@@ -307,3 +311,5 @@ Riunione/*.ripristinato.*      file ripristinati
 `openai/privacy-filter` aiuta a minimizzare dati sensibili, ma non garantisce
 anonimizzazione perfetta. Per documenti importanti: censura, controlla il file,
 aggiungi regole in memoria, poi ricensura dagli originali in `Dati/Originali`.
+
+

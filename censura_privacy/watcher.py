@@ -164,7 +164,7 @@ def build_detector(*, device: str, regex_only: bool):
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Censura file in Censura e ripristina file censurati in Riunione."
+        description="Shadow Text: censura file in Censura e ripristina file censurati in Riunione."
     )
     parser.add_argument(
         "mode",

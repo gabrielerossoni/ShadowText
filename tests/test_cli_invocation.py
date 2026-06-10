@@ -5,6 +5,20 @@ from pathlib import Path
 
 
 class CliInvocationTests(unittest.TestCase):
+    def test_shadow_text_module_entrypoint_shows_help(self):
+        repo_root = Path(__file__).resolve().parents[1]
+
+        result = subprocess.run(
+            [sys.executable, "-m", "shadow_text", "--help"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Shadow Text", result.stdout)
+
     def test_watcher_script_can_be_run_from_package_directory(self):
         repo_root = Path(__file__).resolve().parents[1]
         package_dir = repo_root / "censura_privacy"

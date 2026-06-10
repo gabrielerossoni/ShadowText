@@ -1,4 +1,4 @@
-"""Folder-based PII redaction and restoration utilities."""
+"""Shadow Text folder-based PII redaction and restoration utilities."""
 
 __all__ = ["__version__"]
 
