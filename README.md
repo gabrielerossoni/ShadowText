@@ -308,6 +308,24 @@ Riunione/*.ripristinato.*      file ripristinati
 
 `Dati` contiene materiale sensibile. Non condividerla e non committarla.
 
+## Licenza
+
+Shadow Text e rilasciato sotto **GNU Affero General Public License v3.0
+(AGPL-3.0)**. Il testo completo e in `LICENSE`.
+
+La scelta non e MIT perche il progetto usa `PyMuPDF`, che e distribuito con
+doppia licenza: AGPL-3.0 oppure licenza commerciale Artifex. Per pubblicare
+questo progetto come open source usando PyMuPDF, AGPL-3.0 e la scelta coerente.
+
+Le altre dipendenze principali sono piu permissive:
+
+- `openai/privacy-filter` / `opf`: Apache-2.0;
+- `pypdf`: BSD-3-Clause;
+- `reportlab`: BSD.
+
+Se vuoi una licenza permissiva tipo MIT/Apache per Shadow Text, devi prima
+sostituire `PyMuPDF` oppure usare una licenza commerciale compatibile.
+
 ## Note
 
 `openai/privacy-filter` aiuta a minimizzare dati sensibili, ma non garantisce
