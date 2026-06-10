@@ -398,10 +398,10 @@ def _cuda_diagnostics() -> str:
     lines.append(f"OPF_MOE_TRITON: {os.environ.get('OPF_MOE_TRITON')}")
     if torch.cuda.is_available():
         lines.append(f"GPU 0: {torch.cuda.get_device_name(0)}")
-        if os.environ.get("OPF_MOE_TRITON") and importlib.util.find_spec("triton") is None:
+        if importlib.util.find_spec("triton") is None:
             lines.append(
-                "Nota: OPF_MOE_TRITON e impostato ma triton non e installato; "
-                "il watcher lo disattivera automaticamente prima di usare OPF su CUDA."
+                "Nota: triton non e installato; Shadow Text impostera "
+                "OPF_MOE_TRITON=0 prima di usare OPF su CUDA."
             )
     else:
         lines.append(

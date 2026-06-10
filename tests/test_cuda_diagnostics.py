@@ -41,7 +41,7 @@ class CudaDiagnosticsTests(unittest.TestCase):
         finally:
             OpfDetector._assert_cuda_available = original_assert
 
-    def test_triton_env_is_disabled_when_triton_is_missing(self):
+    def test_triton_env_is_forced_false_when_triton_is_missing(self):
         original_value = os.environ.get("OPF_MOE_TRITON")
         os.environ["OPF_MOE_TRITON"] = "1"
         try:
@@ -50,7 +50,21 @@ class CudaDiagnosticsTests(unittest.TestCase):
                 changed = _maybe_disable_triton(lambda _name: None)
 
             self.assertTrue(changed)
-            self.assertNotIn("OPF_MOE_TRITON", os.environ)
+            self.assertEqual(os.environ["OPF_MOE_TRITON"], "0")
+        finally:
+            if original_value is None:
+                os.environ.pop("OPF_MOE_TRITON", None)
+            else:
+                os.environ["OPF_MOE_TRITON"] = original_value
+
+    def test_triton_env_is_set_false_when_unset_and_triton_is_missing(self):
+        original_value = os.environ.get("OPF_MOE_TRITON")
+        os.environ.pop("OPF_MOE_TRITON", None)
+        try:
+            changed = _maybe_disable_triton(lambda _name: None)
+
+            self.assertTrue(changed)
+            self.assertEqual(os.environ["OPF_MOE_TRITON"], "0")
         finally:
             if original_value is None:
                 os.environ.pop("OPF_MOE_TRITON", None)

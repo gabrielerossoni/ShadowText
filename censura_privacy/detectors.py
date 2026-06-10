@@ -7,6 +7,8 @@ from typing import Callable, Iterable, Protocol
 
 from .engine import Span
 
+_TRITON_NOTICE_PRINTED = False
+
 
 class Detector(Protocol):
     def detect(self, text: str) -> list[Span]:
@@ -61,7 +63,7 @@ class OpfDetector:
         try:
             self._opf = OPF(device=device, output_mode="typed")
         except Exception as exc:
-            if device == "cuda" and _is_triton_error(exc) and _maybe_disable_triton():
+            if device == "cuda" and _is_triton_error(exc) and _maybe_disable_triton(force=True):
                 self._opf = OPF(device=device, output_mode="typed")
             else:
                 raise
@@ -145,14 +147,32 @@ class CombinedDetector:
 
 def _maybe_disable_triton(
     find_spec: Callable[[str], object | None] = importlib.util.find_spec,
+    *,
+    force: bool = False,
 ) -> bool:
-    if os.environ.get("OPF_MOE_TRITON") is None:
+    current = os.environ.get("OPF_MOE_TRITON")
+    current_is_false = current is not None and current.strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if current_is_false and not force:
         return False
-    if find_spec("triton") is not None:
+    if not force and find_spec("triton") is not None:
         return False
-    os.environ.pop("OPF_MOE_TRITON", None)
-    print("OPF_MOE_TRITON disattivato: triton non e installato.")
+    if current == "0" and force:
+        return False
+    os.environ["OPF_MOE_TRITON"] = "0"
+    _print_triton_notice()
     return True
+
+
+def _print_triton_notice() -> None:
+    global _TRITON_NOTICE_PRINTED
+    if not _TRITON_NOTICE_PRINTED:
+        print("OPF_MOE_TRITON=0: Triton disattivato; OPF usa i kernel PyTorch.")
+        _TRITON_NOTICE_PRINTED = True
 
 
 def _is_triton_error(exc: Exception) -> bool:

@@ -129,9 +129,11 @@ Triton-backed MoE kernels require the optional `triton` dependency.
 Install `triton` or unset OPF_MOE_TRITON.
 ```
 
-il watcher disattiva automaticamente `OPF_MOE_TRITON` se `triton` non e
-installato, poi riprova OPF su CUDA. In pratica non devi installare `triton` per
-questo caso su Windows: riavvia il watcher dopo aver aggiornato il codice.
+Shadow Text forza automaticamente `OPF_MOE_TRITON=0` se `triton` non e
+installato, poi riprova OPF su CUDA. Questo serve perche OPF abilita i kernel
+Triton di default sui device non CPU: lasciare la variabile non impostata non
+basta. In pratica non devi installare `triton` per questo caso su Windows:
+riavvia il watcher dopo aver aggiornato il codice.
 
 ## Cosa succede
 
