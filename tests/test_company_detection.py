@@ -1,14 +1,13 @@
 import contextlib
 import io
-import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from censura_privacy.detectors import RegexDetector
-from censura_privacy.engine import redact_text
-from censura_privacy.memory import add_always_redact, load_memory
-from censura_privacy.watcher import main, process_for_censura
+from shadow_text.detectors import RegexDetector
+from shadow_text.engine import load_mapping, redact_text
+from shadow_text.memory import add_always_redact, load_memory
+from shadow_text.watcher import main, process_for_censura
 
 
 class EmptyDetector:
@@ -37,7 +36,7 @@ class CompanyDetectionTests(unittest.TestCase):
             self.assertIsNotNone(redacted)
             assert redacted is not None
             self.assertEqual(redacted.read_text(encoding="utf-8"), "Cliente: AZIENDA_00001")
-            mapping = json.loads((data_dir / "nota.censurato.txt.json").read_text(encoding="utf-8"))
+            mapping = load_mapping(data_dir / "nota.censurato.txt.json.enc")
             self.assertEqual(mapping["entries"][0]["label"], "company")
 
     def test_regex_detects_company_names_with_legal_suffixes(self):

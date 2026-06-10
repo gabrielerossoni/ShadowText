@@ -12,7 +12,7 @@ import os
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    __package__ = "censura_privacy"
+    __package__ = "shadow_text"
 
 from .audit import write_audit
 from .detectors import CombinedDetector, LazyOpfDetector, RegexDetector
@@ -26,7 +26,9 @@ from .engine import (
     write_mapping,
 )
 from .memory import add_always_redact, add_never_redact, apply_memory, load_memory
+from .office_io import OFFICE_SUFFIXES, write_redacted_office, write_restored_office
 from .pdf_redaction import write_redacted_pdf, write_restored_pdf
+from .quality import write_quality_report
 
 
 PACKAGE_DIR = Path(__file__).resolve().parent
@@ -44,7 +46,6 @@ def process_for_censura(
     detector,
     all_files: bool = False,
     memory_path: Path | None = None,
-    fast_pdf: bool = False,
     gpu_over_mb: float = DEFAULT_GPU_OVER_MB,
     logger: Callable[[str], None] | None = None,
 ) -> Path | None:
@@ -54,10 +55,9 @@ def process_for_censura(
     document = read_document(path, all_files=all_files)
     memory_path = memory_path or data_dir / "memoria.json"
     memory = load_memory(memory_path)
-    active_detector = RegexDetector() if fast_pdf and path.suffix.lower() == ".pdf" else detector
     spans = apply_memory(
         document.text,
-        _detect_for_file(active_detector, document.text, path, gpu_over_mb=gpu_over_mb),
+        _detect_for_file(detector, document.text, path, gpu_over_mb=gpu_over_mb),
         memory,
     )
     redacted, entries = redact_text(document.text, spans)
@@ -65,7 +65,14 @@ def process_for_censura(
     redacted_path = path.with_name(f"{path.stem}.censurato{document.output_suffix}")
     pdf_marks = []
     if path.suffix.lower() == ".pdf":
-        pdf_marks = write_redacted_pdf(path, redacted_path, entries)
+        pdf_marks = write_redacted_pdf(
+            path,
+            redacted_path,
+            entries,
+            ocr_tokens=document.pdf_ocr_tokens,
+        )
+    elif path.suffix.lower() in OFFICE_SUFFIXES:
+        write_redacted_office(path, redacted_path, entries)
     else:
         write_document(redacted_path, redacted)
 
@@ -77,6 +84,7 @@ def process_for_censura(
     if pdf_marks:
         mapping["pdf_marks"] = pdf_marks
     mapping_path = write_mapping(data_dir, mapping)
+    report_path = write_quality_report(data_dir, mapping)
     archive_path = _archive_original(path, data_dir)
     _log(logger, f"File censurato pronto: {redacted_path.name}")
     write_audit(
@@ -86,6 +94,7 @@ def process_for_censura(
             "source_filename": mapping["source_filename"],
             "redacted_filename": mapping["redacted_filename"],
             "mapping_filename": mapping_path.name,
+            "report_filename": report_path.name,
             "original_archive": str(archive_path.relative_to(data_dir)),
             "entries_count": len(entries),
             "memory_always_redact_count": len(memory.get("always_redact", [])),
@@ -113,6 +122,8 @@ def process_for_riunione(
     restored_path = path.with_name(restored_name)
     if path.suffix.lower() == ".pdf" and mapping.get("pdf_marks"):
         write_restored_pdf(path, restored_path, mapping["pdf_marks"])
+    elif path.suffix.lower() in OFFICE_SUFFIXES:
+        write_restored_office(path, restored_path, mapping.get("entries", []))
     else:
         document = read_document(path, all_files=True)
         restored = restore_text(document.text, mapping)
@@ -139,7 +150,6 @@ def watch(
     detector,
     interval: float,
     all_files: bool,
-    fast_pdf: bool,
     gpu_over_mb: float,
 ) -> None:
     censura_dir.mkdir(parents=True, exist_ok=True)
@@ -151,7 +161,7 @@ def watch(
     _console_log(f"Censura={censura_dir}")
     _console_log(f"Riunione={riunione_dir}")
     while True:
-        _scan_censura(censura_dir, data_dir, detector, all_files, fast_pdf, gpu_over_mb, seen)
+        _scan_censura(censura_dir, data_dir, detector, all_files, gpu_over_mb, seen)
         _scan_riunione(riunione_dir, data_dir, seen)
         time.sleep(interval)
 
@@ -189,7 +199,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--gpu-over-mb", type=float, default=DEFAULT_GPU_OVER_MB)
     parser.add_argument("--interval", type=float, default=2.0)
     parser.add_argument("--regex-only", action="store_true")
-    parser.add_argument("--fast-pdf", action="store_true")
     parser.add_argument("--all-files", action="store_true")
     parser.add_argument("--text", help="Testo da ricordare per remember-redact/remember-keep")
     parser.add_argument("--label", help="Label OPF da usare con remember-redact")
@@ -256,7 +265,6 @@ def main(argv: list[str] | None = None) -> int:
             detector=detector,
             all_files=args.all_files,
             memory_path=memory_path,
-            fast_pdf=args.fast_pdf,
             gpu_over_mb=args.gpu_over_mb,
         )
         return 0
@@ -268,7 +276,6 @@ def main(argv: list[str] | None = None) -> int:
         detector=detector,
         interval=args.interval,
         all_files=args.all_files,
-        fast_pdf=args.fast_pdf,
         gpu_over_mb=args.gpu_over_mb,
     )
     return 0
@@ -279,7 +286,6 @@ def _scan_censura(
     data_dir: Path,
     detector,
     all_files: bool,
-    fast_pdf: bool,
     gpu_over_mb: float,
     seen,
 ) -> None:
@@ -300,7 +306,6 @@ def _scan_censura(
                 data_dir=data_dir,
                 detector=detector,
                 all_files=all_files,
-                fast_pdf=fast_pdf,
                 gpu_over_mb=gpu_over_mb,
                 logger=_console_log,
             )

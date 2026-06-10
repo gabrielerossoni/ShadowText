@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from censura_privacy.engine import Span
-from censura_privacy.watcher import process_for_censura
+from shadow_text.engine import Span
+from shadow_text.watcher import process_for_censura
 
 
 class DeviceRecordingDetector:

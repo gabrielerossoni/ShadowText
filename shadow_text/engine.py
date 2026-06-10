@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 from typing import Any, Iterable
 
+from .crypto import decrypt_text, encrypt_text
+
 
 SCHEMA_VERSION = 1
 
@@ -101,16 +103,20 @@ def build_mapping(
 def write_mapping(data_dir: Path, mapping: dict[str, Any]) -> Path:
     data_dir.mkdir(parents=True, exist_ok=True)
     filename = _safe_mapping_filename(str(mapping["redacted_filename"]))
-    path = data_dir / filename
+    path = data_dir / f"{filename}.enc"
+    payload = json.dumps(mapping, ensure_ascii=False, indent=2)
     path.write_text(
-        json.dumps(mapping, ensure_ascii=False, indent=2),
+        encrypt_text(payload),
         encoding="utf-8",
     )
     return path
 
 
 def load_mapping(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    raw = path.read_text(encoding="utf-8")
+    if path.suffix == ".enc":
+        raw = decrypt_text(raw)
+    return json.loads(raw)
 
 
 def restore_text(redacted_text: str, mapping: dict[str, Any]) -> str:
@@ -131,9 +137,12 @@ def find_mapping_for_redacted_file(data_dir: Path, redacted_filename: str) -> Pa
     if not data_dir.exists():
         return None
     expected = data_dir / _safe_mapping_filename(redacted_filename)
+    encrypted_expected = data_dir / f"{expected.name}.enc"
+    if encrypted_expected.exists():
+        return encrypted_expected
     if expected.exists():
         return expected
-    for candidate in data_dir.glob("*.json"):
+    for candidate in list(data_dir.glob("*.json.enc")) + list(data_dir.glob("*.json")):
         try:
             payload = load_mapping(candidate)
         except (OSError, json.JSONDecodeError):

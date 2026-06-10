@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 from .engine import RedactionEntry
 
@@ -18,7 +19,13 @@ class PdfMark:
     font_size: float
 
 
-def write_redacted_pdf(source_path: Path, output_path: Path, entries: list[RedactionEntry]) -> list[dict]:
+def write_redacted_pdf(
+    source_path: Path,
+    output_path: Path,
+    entries: list[RedactionEntry],
+    *,
+    ocr_tokens: list[dict[str, Any]] | None = None,
+) -> list[dict]:
     try:
         import fitz
     except ImportError as exc:
@@ -29,13 +36,20 @@ def write_redacted_pdf(source_path: Path, output_path: Path, entries: list[Redac
 
     doc = fitz.open(source_path)
     marks: list[PdfMark] = []
+    used_rects: set[tuple[int, int, int, int, int]] = set()
 
     for entry in entries:
-        rect = _find_first_rect(doc, entry.value)
+        rect = (
+            _find_ocr_rect(entry, ocr_tokens)
+            if ocr_tokens
+            else _find_next_rect(doc, entry.value, used_rects)
+        )
         if rect is None:
             doc.close()
             raise RuntimeError(f"Impossibile localizzare nel PDF il tag {entry.tag}")
         page_index, fitz_rect = rect
+        if not ocr_tokens:
+            used_rects.add(_rect_key(page_index, fitz_rect))
         marks.append(_mark_from_rect(entry, page_index, fitz_rect))
 
     for mark in marks:
@@ -89,12 +103,51 @@ def write_restored_pdf(redacted_path: Path, output_path: Path, marks: list[dict]
     doc.close()
 
 
-def _find_first_rect(doc, value: str):
+def _find_next_rect(doc, value: str, used_rects: set[tuple[int, int, int, int, int]]):
     for page_index, page in enumerate(doc):
         rects = page.search_for(value)
-        if rects:
-            return page_index, rects[0]
+        for rect in rects:
+            key = _rect_key(page_index, rect)
+            if key not in used_rects:
+                return page_index, rect
     return None
+
+
+def _find_ocr_rect(entry: RedactionEntry, ocr_tokens: list[dict[str, Any]] | None):
+    if not ocr_tokens:
+        return None
+    try:
+        import fitz
+    except ImportError as exc:
+        raise RuntimeError("Per redigere PDF OCR serve PyMuPDF.") from exc
+
+    overlapping = [
+        token
+        for token in ocr_tokens
+        if int(token["start"]) < entry.end and int(token["end"]) > entry.start
+    ]
+    if not overlapping:
+        return None
+    pages = {int(token["page_index"]) for token in overlapping}
+    if len(pages) != 1:
+        return None
+    page_index = pages.pop()
+    return page_index, fitz.Rect(
+        min(float(token["x0"]) for token in overlapping),
+        min(float(token["y0"]) for token in overlapping),
+        max(float(token["x1"]) for token in overlapping),
+        max(float(token["y1"]) for token in overlapping),
+    )
+
+
+def _rect_key(page_index: int, rect) -> tuple[int, int, int, int, int]:
+    return (
+        page_index,
+        round(float(rect.x0) * 100),
+        round(float(rect.y0) * 100),
+        round(float(rect.x1) * 100),
+        round(float(rect.y1) * 100),
+    )
 
 
 def _mark_from_rect(entry: RedactionEntry, page_index: int, rect) -> PdfMark:

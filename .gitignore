@@ -1,7 +1,44 @@
+# Python cache
 __pycache__/
 *.py[cod]
+*$py.class
+
+# Virtual environments
 .venv/
-.tmp_*/
+venv/
+env/
+
+# Local configuration and secrets
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Shadow Text sensitive/runtime folders
 Censura/*
 Dati/*
 Riunione/*
+*.json.enc
+*.report.json
+
+# Local runtime artifacts
+.history/
+.dist/
+.tmp_*/
+.opf/
+
+# Packaging/test artifacts
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from censura_privacy.watcher import _scan_censura, _scan_riunione
+from shadow_text.watcher import _scan_censura, _scan_riunione
 
 
 class WatcherLogTests(unittest.TestCase):
@@ -24,7 +24,6 @@ class WatcherLogTests(unittest.TestCase):
                     data_dir,
                     detector=_FailingDetector(),
                     all_files=False,
-                    fast_pdf=False,
                     gpu_over_mb=0,
                     seen={},
                 )

@@ -1,4 +1,4 @@
-from censura_privacy.watcher import main
+from .watcher import main
 
 
 if __name__ == "__main__":

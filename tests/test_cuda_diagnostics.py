@@ -3,7 +3,7 @@ import io
 import os
 import unittest
 
-from censura_privacy.detectors import LazyOpfDetector, OpfDetector, _maybe_disable_triton
+from shadow_text.detectors import LazyOpfDetector, OpfDetector, _maybe_disable_triton
 
 
 class CudaDiagnosticsTests(unittest.TestCase):

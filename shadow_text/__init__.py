@@ -1,5 +1,5 @@
-"""Shadow Text command compatibility package."""
+"""Shadow Text folder-based PII redaction and restoration utilities."""
 
-from censura_privacy import __version__
+__version__ = "0.2.0"
 
 __all__ = ["__version__"]

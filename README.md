@@ -9,6 +9,8 @@ Usa:
 - `openai/privacy-filter` tramite `opf`;
 - regex locali per IBAN, email, telefoni, URL e aziende con suffisso legale;
 - memoria persistente in `Dati/memoria.json`;
+- mapping cifrati in `Dati` con `SHADOW_TEXT_KEY`;
+- report qualita non sensibili per ogni censura;
 - audit in `Dati/storico.jsonl`.
 
 ## Installazione
@@ -22,6 +24,15 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
+Imposta una chiave locale prima di censurare o ripristinare:
+
+```powershell
+$env:SHADOW_TEXT_KEY="scegli-una-password-lunga-o-una-chiave-aziendale"
+```
+
+Usa sempre la stessa chiave per censurare e ripristinare. Se cambi o perdi la
+chiave, i mapping cifrati in `Dati` non sono piu leggibili.
+
 Al primo avvio, `openai/privacy-filter` puo scaricare il modello in:
 
 ```text
@@ -33,14 +44,14 @@ C:\Users\Gab\.opf\privacy_filter
 Comando consigliato per uso normale:
 
 ```powershell
-python -m shadow_text watch --fast-pdf
+python -m shadow_text watch
 ```
 
-Questo usa OPF su `.txt` e `.md`, ma sui PDF usa regex + memoria. E il miglior
-compromesso se i PDF devono essere veloci.
+Il watcher usa sempre OPF quando censura i formati supportati, inclusi i PDF. Le
+regex locali e la memoria affiancano OPF, non lo sostituiscono.
 
-Per default, ogni modalita che usa OPF prova automaticamente CUDA/GPU su tutti i
-file. Se CUDA non e disponibile o OPF non riesce a usarla, torna su CPU.
+Per default prova automaticamente CUDA/GPU su tutti i file. Se CUDA non e
+disponibile o OPF non riesce a usarla, torna su CPU.
 
 Tutti i modi di avvio:
 
@@ -50,13 +61,6 @@ python -m shadow_text watch
 
 Modalita completa. Usa OPF su tutti i file supportati. E la piu precisa. Prova
 CUDA/GPU; se non riesce torna su CPU.
-
-```powershell
-python -m shadow_text watch --fast-pdf
-```
-
-Modalita consigliata. PDF veloci con regex + memoria; txt/md con OPF. I txt/md
-provano CUDA/GPU. I PDF in questa modalita non usano OPF, quindi non usano GPU.
 
 ```powershell
 python -m shadow_text watch --regex-only
@@ -77,26 +81,10 @@ python -m shadow_text watch --gpu-over-mb 0
 Disattiva la soglia automatica e usa il device normale.
 
 ```powershell
-python -m shadow_text watch --fast-pdf --gpu-over-mb 5
-```
-
-PDF veloci senza OPF; txt/md sopra 5 MB provano GPU.
-
-```powershell
 python -m shadow_text watch --all-files
 ```
 
 Prova a leggere anche estensioni non note come testo UTF-8.
-
-Il vecchio package interno `censura_privacy` resta compatibile, quindi i vecchi
-comandi continuano a funzionare. Per il rebranding usa pero i comandi
-`shadow_text`.
-
-Se sei per errore dentro `censura_privacy`, funziona ancora anche:
-
-```powershell
-python watcher.py watch --fast-pdf
-```
 
 ## CUDA/GPU
 
@@ -140,10 +128,11 @@ riavvia il watcher dopo aver aggiornato il codice.
 1. Metti un file in `Censura`.
 2. Il watcher crea `nome.censurato.ext`.
 3. L'originale viene spostato in `Dati/Originali`.
-4. Il mapping tag -> valore originale viene scritto in `Dati/*.json`.
-5. Sposti `nome.censurato.ext` in `Riunione`.
-6. Il watcher crea `nome.ripristinato.ext`.
-7. Il file censurato viene rimosso da `Riunione`.
+4. Il mapping tag -> valore originale viene cifrato in `Dati/*.json.enc`.
+5. Il report qualita viene scritto in `Dati/*.report.json`.
+6. Sposti `nome.censurato.ext` in `Riunione`.
+7. Il watcher crea `nome.ripristinato.ext`.
+8. Il file censurato viene rimosso da `Riunione`.
 
 Importante: `Riunione` non censura file normali. Se metti `documento.pdf` in
 `Riunione`, viene ignorato. In `Riunione` vanno solo file con `.censurato` nel
@@ -154,7 +143,8 @@ Esempio:
 ```text
 Censura/nota.pdf
 -> Censura/nota.censurato.pdf
--> Dati/nota.censurato.pdf.json
+-> Dati/nota.censurato.pdf.json.enc
+-> Dati/nota.censurato.pdf.report.json
 -> Dati/Originali/nota.pdf
 
 Riunione/nota.censurato.pdf
@@ -173,15 +163,81 @@ Il watcher mostra cosa sta facendo:
 [23:14:08] OK censura: nota.censurato.pdf (6.1s)
 ```
 
+## Mapping cifrati
+
+I mapping sono il punto piu sensibile del sistema, perche contengono il valore
+originale di ogni tag. Shadow Text li scrive cifrati:
+
+```text
+Dati/nome.censurato.ext.json.enc
+```
+
+La chiave arriva solo dall'ambiente:
+
+```powershell
+$env:SHADOW_TEXT_KEY="scegli-una-password-lunga-o-una-chiave-aziendale"
+```
+
+Non viene salvata nel repo, nei file di configurazione o in `Dati`.
+
+## Report qualita
+
+Per ogni censura viene creato un report non sensibile:
+
+```text
+Dati/nome.censurato.ext.report.json
+```
+
+Contiene:
+
+- totale redazioni;
+- conteggi per label OPF/regex;
+- conteggi per prefisso tag;
+- confidenza media, al momento `null` finche OPF non espone score stabili nel
+  payload usato dal progetto.
+
 ## Formati supportati
 
 - `.txt`
 - `.md`
 - `.markdown`
 - `.pdf`
+- `.docx`
+- `.xlsx`
+- `.pptx`
 
 I PDF restano PDF. Il sistema usa `PyMuPDF` per applicare redazioni sulle pagine
 originali: mantiene numero di pagine e dimensioni pagina.
+
+DOCX, XLSX e PPTX restano nel formato Office originale. Shadow Text crea una
+copia censurata e sostituisce i valori sensibili con i tag nelle parti testuali
+supportate.
+
+## OCR PDF scansionati
+
+Se un PDF non contiene testo estraibile, Shadow Text prova l'OCR con Tesseract.
+Per usarlo servono:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+e Tesseract installato nel sistema operativo e disponibile nel `PATH`.
+
+Lingua OCR predefinita:
+
+```powershell
+$env:SHADOW_TEXT_OCR_LANG="ita+eng"
+```
+
+Zoom OCR predefinito:
+
+```powershell
+$env:SHADOW_TEXT_OCR_ZOOM="2.0"
+```
+
+Per PDF nativi non viene usato OCR: PyMuPDF estrae il testo direttamente e le
+redazioni vengono applicate sulle coordinate del testo originale.
 
 ## Come gestire i PDF
 
@@ -207,7 +263,7 @@ dice di spostarlo in `Riunione`.
 Censurare un file specifico:
 
 ```powershell
-python -m shadow_text censor --file .\Censura\nota.pdf --fast-pdf
+python -m shadow_text censor --file .\Censura\nota.pdf
 ```
 
 Ripristinare un file specifico:
@@ -301,7 +357,8 @@ AZIENDA_00001
 Dati/memoria.json              memoria delle correzioni
 Dati/storico.jsonl             audit
 Dati/Originali/*               originali archiviati
-Dati/*.censurato.*.json        mapping tag -> valore originale
+Dati/*.censurato.*.json.enc    mapping cifrato tag -> valore originale
+Dati/*.censurato.*.report.json report qualita senza valori sensibili
 Censura/*.censurato.*          file censurati
 Riunione/*.ripristinato.*      file ripristinati
 ```
@@ -310,26 +367,18 @@ Riunione/*.ripristinato.*      file ripristinati
 
 ## Licenza
 
-Shadow Text e rilasciato sotto **GNU Affero General Public License v3.0
-(AGPL-3.0)**. Il testo completo e in `LICENSE`.
+ShadowText è rilasciato sotto GNU AGPL-3.0.
 
-La scelta non e MIT perche il progetto usa `PyMuPDF`, che e distribuito con
-doppia licenza: AGPL-3.0 oppure licenza commerciale Artifex. Per pubblicare
-questo progetto come open source usando PyMuPDF, AGPL-3.0 e la scelta coerente.
+Questo significa che puoi usare, modificare e distribuire il progetto, anche commercialmente,
+ma ogni versione modificata o offerta come servizio di rete deve rendere disponibile il
+codice sorgente secondo i termini della AGPL-3.0.
 
-Le altre dipendenze principali sono piu permissive:
-
-- `openai/privacy-filter` / `opf`: Apache-2.0;
-- `pypdf`: BSD-3-Clause;
-- `reportlab`: BSD.
-
-Se vuoi una licenza permissiva tipo MIT/Apache per Shadow Text, devi prima
-sostituire `PyMuPDF` oppure usare una licenza commerciale compatibile.
+Attenzione: ShadowText usa librerie di terze parti, tra cui PyMuPDF e openai/privacy-filter.
+Chi integra ShadowText in prodotti commerciali deve verificare anche le licenze delle
+dipendenze.
 
 ## Note
 
 `openai/privacy-filter` aiuta a minimizzare dati sensibili, ma non garantisce
 anonimizzazione perfetta. Per documenti importanti: censura, controlla il file,
 aggiungi regole in memoria, poi ricensura dagli originali in `Dati/Originali`.
-
-

@@ -19,9 +19,9 @@ class CliInvocationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Shadow Text", result.stdout)
 
-    def test_watcher_script_can_be_run_from_package_directory(self):
+    def test_shadow_text_watcher_script_can_be_run_from_package_directory(self):
         repo_root = Path(__file__).resolve().parents[1]
-        package_dir = repo_root / "censura_privacy"
+        package_dir = repo_root / "shadow_text"
 
         result = subprocess.run(
             [sys.executable, "watcher.py", "--help"],
