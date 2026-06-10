@@ -1,0 +1,4 @@
+opf @ git+https://github.com/openai/privacy-filter.git
+pypdf>=4.0.0
+reportlab>=4.0.0
+PyMuPDF>=1.27.0
